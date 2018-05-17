@@ -368,7 +368,6 @@ class isoparser(object):
             # Standard supports 00:00 and 24:00 as representations of midnight
             if any(component != 0 for component in components[1:4]):
                 raise ValueError('Hour may only be 24 at 24:00:00.000')
-            components[0] = 0
 
         return components
 
