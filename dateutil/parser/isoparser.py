@@ -133,13 +133,18 @@ class isoparser(object):
         """
         components, pos = self._parse_isodate(dt_str)
 
+        should_increment_day = False
         if len(dt_str) > pos:
             if self._sep is None or dt_str[pos:pos + 1] == self._sep:
-                components += self._parse_isotime(dt_str[pos + 1:])
+                time_components, should_increment_day =
+                    self._parse_isotime(dt_str[pos + 1:])
             else:
                 raise ValueError('String contains unknown ISO components')
 
-        return datetime(*components)
+        result = datetime(*components)
+        if should_increment_day:
+            result += date.timedelta(1)
+        return result
 
     @_takes_ascii
     def parse_isodate(self, datestr):
@@ -169,7 +174,8 @@ class isoparser(object):
         :return:
             Returns a :class:`datetime.time` object
         """
-        return time(*self._parse_isotime(timestr))
+        components, should_increment_day = self._parse_isotime(timestr)
+        return time(*components)
 
     @_takes_ascii
     def parse_tzstr(self, tzstr, zero_as_utc=True):
@@ -364,12 +370,17 @@ class isoparser(object):
         if pos < len_str:
             raise ValueError('Unused components in ISO string')
 
+        should_increment_day = False
         if components[0] == 24:
-            # Standard supports 00:00 and 24:00 as representations of midnight
+            # Standard supports 00:00 and 24:00 as representations of midnight, where
+            # 24:00 is midnight of the next day.  Python's datetime and time types do
+            # not support 24:00 so we will increment the date in the caller.
             if any(component != 0 for component in components[1:4]):
                 raise ValueError('Hour may only be 24 at 24:00:00.000')
+            components[0] = 0
+            should_increment_day = True
 
-        return components
+        return components, should_increment_day
 
     def _parse_tzstr(self, tzstr, zero_as_utc=True):
         if tzstr == b'Z':
